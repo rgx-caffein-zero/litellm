@@ -1,0 +1,133 @@
+# Runs the same quality gate as local development (scripts/harness/check.sh).
+#
+# Toolchains are set up automatically based on the manifest files in the repository.
+# Adjust versions to match your project, and remove the setup steps you do not need.
+# For supply-chain hardening, pin third-party actions to a full commit SHA.
+
+name: quality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-gate:
+    name: Quality gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- Node.js ---------------------------------------------------------------
+      - name: Set up Node.js
+        if: hashFiles('package.json') != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      - name: Install Node.js dependencies
+        if: hashFiles('package.json') != ''
+        run: |
+          corepack enable
+          if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile
+          elif [ -f yarn.lock ]; then yarn install --immutable || yarn install --frozen-lockfile
+          elif [ -f package-lock.json ]; then npm ci
+          else npm install
+          fi
+
+      # --- Python ----------------------------------------------------------------
+      - name: Set up Python
+        if: hashFiles('pyproject.toml', 'setup.py', 'setup.cfg', 'requirements.txt') != ''
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Set up uv
+        if: hashFiles('uv.lock') != ''
+        uses: astral-sh/setup-uv@v5
+      - name: Install Python dependencies
+        if: hashFiles('pyproject.toml', 'setup.py', 'setup.cfg', 'requirements.txt') != ''
+        run: |
+          if [ -f uv.lock ]; then uv sync --all-extras --dev
+          elif [ -f poetry.lock ]; then pipx install poetry && poetry install --no-interaction
+          else
+            python -m pip install --upgrade pip
+            if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt
+            elif [ -f requirements.txt ]; then pip install -r requirements.txt
+            fi
+            if [ -f pyproject.toml ] || [ -f setup.py ]; then pip install -e ".[dev]" || pip install -e .; fi
+          fi
+
+      # --- Go --------------------------------------------------------------------
+      - name: Set up Go
+        if: hashFiles('go.mod') != ''
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # --- Rust (rustup is preinstalled on GitHub-hosted runners) ----------------
+      - name: Set up Rust components
+        if: hashFiles('Cargo.toml') != ''
+        run: rustup component add rustfmt clippy
+
+      # --- JVM -------------------------------------------------------------------
+      - name: Set up Java
+        if: hashFiles('pom.xml', 'build.gradle', 'build.gradle.kts') != ''
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      # --- .NET ------------------------------------------------------------------
+      - name: Set up .NET
+        if: hashFiles('*.sln', '*.csproj') != ''
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      # --- Ruby ------------------------------------------------------------------
+      - name: Set up Ruby
+        if: hashFiles('Gemfile') != ''
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+
+      # --- PHP -------------------------------------------------------------------
+      - name: Set up PHP
+        if: hashFiles('composer.json') != ''
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+      - name: Install PHP dependencies
+        if: hashFiles('composer.json') != ''
+        run: composer install --no-interaction --no-progress
+
+      # --- Quality gate ----------------------------------------------------------
+      - name: Run quality gate
+        run: scripts/harness/check.sh full --strict
+        env:
+          NO_COLOR: "1"
+
+  pr-title:
+    name: PR title follows Conventional Commits
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check PR title
+        env:
+          # Passed through the environment to avoid script injection via the title.
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._/-]+\))?!?: [^[:space:]].*[^.]$'
+          if [[ ! "$TITLE" =~ $pattern ]]; then
+            echo "::error::PR title must follow Conventional Commits (see docs/harness/COMMIT_CONVENTION.md): $TITLE"
+            exit 1
+          fi

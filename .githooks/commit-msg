@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+#
+# Enforces the Conventional Commits format described in docs/harness/COMMIT_CONVENTION.md.
+
+set -euo pipefail
+
+root="$(git rev-parse --show-toplevel)"
+# shellcheck source=scripts/harness/lib.sh
+source "$root/scripts/harness/lib.sh"
+harness::load_config
+
+readonly TYPES="feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert"
+readonly PATTERN="^(${TYPES})(\([a-z0-9._/-]+\))?!?: [^[:space:]].*$"
+
+message_file="$1"
+# The first line that is neither empty nor a git comment is the header.
+header="$(grep -v '^#' "$message_file" | grep -m1 -v '^[[:space:]]*$' || true)"
+
+# Messages created by git itself are allowed as-is.
+if [[ "$header" =~ ^(Merge|Revert\ \"|fixup!|squash!|amend!) ]]; then
+  exit 0
+fi
+
+if [[ ! "$header" =~ $PATTERN ]]; then
+  harness::error "commit message header does not follow Conventional Commits:"
+  printf '  %s\n\n' "$header" >&2
+  printf '  expected: <type>(<scope>)!: <subject>\n' >&2
+  printf '  types:    %s\n' "${TYPES//|/, }" >&2
+  printf '  example:  fix(auth): prevent session fixation on login\n' >&2
+  printf '  see docs/harness/COMMIT_CONVENTION.md\n' >&2
+  exit 1
+fi
+
+# Counts characters, not bytes, so non-ASCII subjects are measured correctly.
+# Locale names differ between platforms, so use the first one that handles UTF-8.
+char_count() {
+  local locale
+  for locale in C.UTF-8 en_US.UTF-8 UTF-8; do
+    if [[ "$(printf '\xe3\x81\x82' | LC_ALL="$locale" wc -m 2>/dev/null | tr -d ' ')" == "1" ]]; then
+      printf '%s' "$1" | LC_ALL="$locale" wc -m | tr -d ' '
+      return 0
+    fi
+  done
+  printf '%s' "$1" | wc -m | tr -d ' '
+}
+
+max_length="${HARNESS_COMMIT_MAX_HEADER:-72}"
+length="$(char_count "$header")"
+if [[ "$length" -gt "$max_length" ]]; then
+  harness::error "commit message header is $length characters (max $max_length)"
+  exit 1
+fi
+
+if [[ "$header" =~ \.$ ]]; then
+  harness::error "commit message subject must not end with a period"
+  exit 1
+fi

@@ -44,6 +44,5 @@ LITELLM_API_KEY="$LITELLM_MASTER_KEY" scripts/smoke-test.sh https://<サーバ�
 ## 開発
 
 ```sh
-scripts/lint.sh    # シェルスクリプトと docker-compose.yml の構文チェック
-tests/run.sh       # テスト
+scripts/harness/check.sh         # 品質ゲート（lint: scripts/lint.sh、test: tests/run.sh）
 ```

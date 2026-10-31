@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+#
+# Blocks commits that contain likely secrets or fail the quick quality gate.
+# Mode is set by HARNESS_PRECOMMIT_MODE in .harness/project.env (quick | full | off).
+#
+# Note: the quality gate checks the working tree, not only the staged changes.
+
+set -euo pipefail
+
+root="$(git rev-parse --show-toplevel)"
+# shellcheck source=scripts/harness/lib.sh
+source "$root/scripts/harness/lib.sh"
+harness::load_config
+
+"$root/scripts/harness/scan-secrets.sh" --staged
+
+mode="${HARNESS_PRECOMMIT_MODE:-quick}"
+case "$mode" in
+  off) exit 0 ;;
+  quick | full) "$root/scripts/harness/check.sh" "$mode" --fail-fast ;;
+  *) harness::die "invalid HARNESS_PRECOMMIT_MODE: $mode (expected quick, full or off)" ;;
+esac
