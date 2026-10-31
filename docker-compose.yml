@@ -70,6 +70,18 @@ services:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       AWS_REGION_NAME: ${AWS_REGION_NAME:-us-east-1}
+      # 料金表などを GitHub・docs.litellm.ai から取得せず、イメージに同梱されたものを使う。
+      # 外への通信を Bedrock・Azure だけにするため（docs/requirements.md の R6）。
+      # 同梱の料金表は LiteLLM の更新で新しくなる
+      LITELLM_LOCAL_MODEL_COST_MAP: "True"
+      LITELLM_LOCAL_ANTHROPIC_BETA_HEADERS: "True"
+      LITELLM_LOCAL_BLOG_POSTS: "True"
+      LITELLM_LOCAL_POLICY_TEMPLATES: "True"
+      LITELLM_LOCAL_AUTOROUTER_PRESETS: "True"
+      # API ドキュメント（/docs、/redoc、/openapi.json）を公開しない（docs/requirements.md の R7）
+      NO_DOCS: "True"
+      NO_REDOC: "True"
+      NO_OPENAPI: "True"
     healthcheck:
       test:
         - CMD-SHELL

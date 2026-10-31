@@ -21,7 +21,7 @@
 ### スコープ
 
 - 対象: Claude Desktop（Cowork / Code タブ）からの利用、および Claude 以外のモデルを含む汎用 LLM ゲートウェイとしての利用
-- 対象外: SSO（OIDC / JWT）認証、LiteLLM の MCP ゲートウェイ機能、既存 LiteLLM の改修
+- 対象外: SSO（OIDC / JWT）認証、LiteLLM の MCP ゲートウェイ機能、既存 LiteLLM の改修、外部サービスとの連携や有料ライセンスが前提の LiteLLM の機能（R7）
 
 ## 2. 確定事項
 
@@ -50,6 +50,8 @@
 | R3 | LiteLLM のイメージはバージョンを固定し、更新手順を文書化する。 |
 | R4 | `STORE_MODEL_IN_DB=True` とし、モデル・チーム・キー・予算を管理 UI で管理できるようにする。 |
 | R5 | PostgreSQL と `.env` のバックアップ手順を用意する。`LITELLM_SALT_KEY` は一度決めたら変更しない（失うか変更すると、DB 内の認証情報を復号できなくなる）。 |
+| R6 | LiteLLM から外部への通信は、推論の上流（Bedrock・Azure OpenAI）だけにする。料金表などは GitHub・docs.litellm.ai から取得せず、イメージに同梱されたものを使う。 |
+| R7 | 使わない機能は無効にする。<br>- API ドキュメント（`/docs`・`/redoc`・`/openapi.json`）<br>- 外部サービスとの連携が前提の機能（Moyai、Lens）<br>- Auto Router（リクエストの難易度でモデルを振り分ける機能）<br>- Enterprise 機能（ライセンス `LITELLM_LICENSE` を設定しない）<br>LiteLLM 側に無効化の設定がない機能は、nginx で 404 にする（docs/adr/0004）。 |
 
 ### 3.2 運用（管理 UI だけで完結すること）
 
@@ -113,6 +115,7 @@
 ## 5. 運用上の注意
 
 - 予算は LiteLLM の料金表をもとにした見積額であり、AWS や Azure の実際の請求額とずれることがある。料金表にない新しいモデルは、単価を手動で設定する。
+- 料金表はイメージに同梱されたものを使うため（R6）、LiteLLM を更新するまで新しくならない。
 - LiteLLM v1.104.0 以降、予算超過時は HTTP 422 を返す。Claude Desktop では一般的なエラーとして表示される（429 だと約 3 分リトライし、`billing_error` 付きの 402 だと「Billing issue」として表示される）。
 - サーバーの IP アドレスが変わった場合は、サーバー証明書を再発行する。新しい IP アドレスがルート CA の許可範囲内なら、PC への再配布は不要。範囲外なら、ルート CA を作り直して全 PC に配布し直す。
 - Bedrock の `us.` 推論プロファイルは、US 内の複数リージョンで推論を処理する。

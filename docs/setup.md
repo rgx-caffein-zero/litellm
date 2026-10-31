@@ -17,6 +17,7 @@ nginx ──► LiteLLM ──► AWS Bedrock（us-east-1）
 
 外部に公開するのは nginx の 443 番ポートだけです。LiteLLM と PostgreSQL はホストのポートに公開しません。
 nginx は、一般の PC には推論 API とヘルスチェックだけを公開し、管理 UI・管理 API は管理者の端末（`.env` の `ADMIN_ALLOW_CIDRS`）からだけ受け付けます（`ADMIN_ALLOW_CIDRS` が空の場合は制限しません）。
+使わない LiteLLM の機能（API ドキュメント、Moyai、Lens、Auto Router）は無効にしており、管理者の端末からも使えません（[requirements.md](requirements.md) の R6・R7）。
 
 | ファイル | 役割 |
 | --- | --- |

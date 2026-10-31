@@ -175,6 +175,33 @@ test_unnormalized_paths_cannot_bypass_admin_restriction() {
   expect_status 400 "$DENIED_BASE" GET '/v1/%6dodels'
 }
 
+test_disabled_features_are_not_found_even_from_admin_range() {
+  expect_status 404 "$ADMIN_BASE" POST /moyai/connect/start
+  expect_status 404 "$ADMIN_BASE" POST /moyai/connect/exchange
+  expect_status 404 "$ADMIN_BASE" POST /v1/moyai/connect/exchange
+  expect_status 404 "$ADMIN_BASE" GET /lens
+  expect_status 404 "$ADMIN_BASE" GET /lens/service
+  expect_status 404 "$ADMIN_BASE" GET /auto_router/availability
+  expect_status 404 "$ADMIN_BASE" GET /public/autorouter_presets
+  expect_status 404 "$ADMIN_BASE" GET /public/complexity_router/fuse_presets
+  expect_status 404 "$ADMIN_BASE" GET /ui/moyai/
+  expect_status 404 "$ADMIN_BASE" GET /ui/lens/
+  expect_status 404 "$OPEN_BASE" POST /moyai/connect/exchange
+  expect_status 404 "$DENIED_BASE" POST /moyai/connect/exchange
+}
+
+test_disabled_features_match_on_normalized_path() {
+  expect_status 404 "$ADMIN_BASE" POST '/%6doyai/connect/exchange'
+  expect_status 404 "$ADMIN_BASE" POST '/ui/../moyai/connect/exchange'
+  expect_status 404 "$ADMIN_BASE" POST '//lens/service'
+}
+
+test_paths_sharing_a_prefix_with_disabled_features_reach_upstream() {
+  expect_status 200 "$ADMIN_BASE" GET /lensX
+  expect_status 200 "$ADMIN_BASE" GET /public/model_hub
+  expect_status 200 "$ADMIN_BASE" GET /ui/models-and-endpoints/
+}
+
 test_valid_admin_range_starts_nginx() {
   # Control for test_invalid_admin_range_prevents_startup: the same setup with a
   # valid value must start, so that a failure there is caused by the value.

@@ -172,6 +172,7 @@ docker compose start litellm
 ## LiteLLM を更新する
 
 1. [リリースノート](https://docs.litellm.ai/release_notes)で、破壊的変更を確認する。
+   外部と通信する機能や、外部サービスとの連携が前提の機能が追加されていないかも確認する。追加されていれば、無効にする（[requirements.md](requirements.md) の R6・R7）。
 2. DB をバックアップする（DB のマイグレーションは元に戻せないため、ロールバックはリストアで行う）。
 3. 新しいバージョンのイメージの digest を確認する。
 
@@ -228,3 +229,6 @@ docker compose restart nginx
 - `AWS_ACCESS_KEY_ID` と `AWS_SECRET_ACCESS_KEY` が空でも、LiteLLM は起動する。
 - `%2F` や `..` を含むパスで推論 API に見せかけて管理系やパススルーに届かせる手口は、400 で拒否される（`tests/nginx.test.sh` で自動テスト）。
 - `STORE_MODEL_IN_DB` を環境変数だけで設定した状態で、管理 API からモデルを追加できる。
+- `LITELLM_LOCAL_*` を設定した状態では、管理 UI・管理 API・推論を使っても、LiteLLM から GitHub・docs.litellm.ai への接続が発生しない（設定しない場合は `raw.githubusercontent.com` と `docs.litellm.ai` に接続する）。
+- `/docs`・`/redoc`・`/openapi.json` は 404 になる。
+- Moyai・Lens・Auto Router の API と、Moyai・Lens の管理 UI の画面は、管理者の端末からも 404 になる。`%XX` や `..` を使っても回避できない（`tests/nginx.test.sh` で自動テスト）。
