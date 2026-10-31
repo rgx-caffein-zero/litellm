@@ -2,7 +2,7 @@
 #
 # ここには Claude Desktop / Cowork が使う Claude モデルだけを定義する。
 # それ以外のモデル（Azure OpenAI、その他の Bedrock モデル）は管理 UI から追加する
-# （STORE_MODEL_IN_DB。docs/operations.md を参照）。
+# （STORE_MODEL_IN_DB。README.md の「運用」を参照）。
 #
 # 機密情報はこのファイルに書かない。os.environ/<変数名> でコンテナの環境変数を参照する。
 # 環境変数は .env の値を docker-compose.yml の environment で渡している
@@ -10,7 +10,7 @@
 
 model_list:
   # Bedrock の Claude は Invoke 経路（bedrock/invoke/）を使う。Converse 経路では
-  # Claude Code / Cowork のプロンプトキャッシュが効かなくなるため（docs/adr/0003）。
+  # Claude Code / Cowork のプロンプトキャッシュが効かなくなるため。
   # model_name には Claude API のモデル ID をそのまま使う。Claude Desktop が
   # モデルの世代と機能（コンテキスト長など）を名前から判定するため。
 

@@ -73,7 +73,7 @@ main() {
     # 上流のエラーはストリームの途中で（HTTP 200 のまま）返ることがあるため、
     # ステータスに加えて、エラーイベントがないことと、最後まで届いたことを確認する。
     # 受信したイベントは tee で標準エラー出力にも逐次表示する。少しずつ表示されることが、
-    # nginx がストリームをバッファリングしていないことの確認になる（docs/setup.md）。
+    # nginx がストリームをバッファリングしていないことの確認になる。
     local stream
     stream="$(curl "${curl_opts[@]}" -N -H @- "$base_url/v1/messages" \
       -H "content-type: application/json" \

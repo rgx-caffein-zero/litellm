@@ -5,5 +5,5 @@
 # 先頭の / でリポジトリ直下に限定する（scripts/certs/ を除外しないため）。
 /certs/
 
-# DB のバックアップ（docs/operations.md）
+# DB のバックアップ（README.md の「バックアップとリストア」）
 /backups/

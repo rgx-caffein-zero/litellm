@@ -12,7 +12,7 @@
 # その場合も管理系は LiteLLM のマスターキーで保護されるが、起動時に警告を出す。
 # 値が不正な場合はエラーで終了し、nginx を起動させない（意図しない設定で起動しないため）。
 # 全開放（/0）を明示した値も不正として扱う（制限しないなら未設定にする）。
-# テスト（tests/admin-allow.test.sh）では、ADMIN_ALLOW_CONF で出力先を差し替える。
+# 出力先は ADMIN_ALLOW_CONF で差し替えられる（既定は /etc/nginx/admin-allow.conf）。
 
 set -eu
 

@@ -4,14 +4,12 @@
 # 外部に公開するのは nginx の 443 番ポートだけ。LiteLLM と PostgreSQL は
 # compose 内部のネットワークからのみ到達できる。
 #
-# 起動前に必要なもの（手順は docs/setup.md）:
+# 起動前に必要なもの（手順は README.md の「構築」）:
 #   - .env（.env.example をコピーして値を設定）
 #   - certs/server.crt と certs/server.key（scripts/certs/ のスクリプトで作成）
 #
 # イメージはタグと digest の両方で固定する（タグの付け替えで中身が変わるのを防ぐ）。
-# 更新手順は docs/operations.md の「LiteLLM を更新する」。
-#
-# ${VAR:?...} の必須変数を追加・変更したら、scripts/lint.sh のダミー値も合わせる。
+# 更新手順は README.md の「LiteLLM を更新する」。
 
 # コンテナのログ（docker compose logs）が際限なく増えないよう、サイズと世代数を制限する
 x-logging: &default-logging
@@ -63,7 +61,7 @@ services:
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?.env に LITELLM_MASTER_KEY を設定してください}
       LITELLM_SALT_KEY: ${LITELLM_SALT_KEY:?.env に LITELLM_SALT_KEY を設定してください}
       DATABASE_URL: postgresql://litellm:${POSTGRES_PASSWORD:?.env に POSTGRES_PASSWORD を設定してください}@db:5432/litellm
-      # 管理 UI からモデルと認証情報を追加できるようにする（docs/adr/0001 を参照）
+      # 管理 UI からモデルと認証情報を追加できるようにする
       STORE_MODEL_IN_DB: "True"
       # Bedrock の認証情報。config.yaml のモデルと、管理 UI で追加した Bedrock モデルの両方が使う。
       # 任意（未設定でも起動する。その場合、Bedrock のモデルへのリクエストは 500 エラー（Unable to locate credentials）になる）
