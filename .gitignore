@@ -1,0 +1,9 @@
+# 機密情報
+.env
+
+# 証明書と秘密鍵（scripts/certs/ で生成する）。
+# 先頭の / でリポジトリ直下に限定する（scripts/certs/ を除外しないため）。
+/certs/
+
+# DB のバックアップ（docs/operations.md）
+/backups/
