@@ -43,7 +43,7 @@ nginx は、一般の PC には推論 API とヘルスチェックだけを公�
 
 - Linux、Docker Engine、Docker Compose v2、OpenSSL、Git、curl 7.76 以降
 - 社内 PC から、サーバーの IP アドレスの 443 番ポートに接続できること
-- サーバーから次の宛先へ HTTPS で接続できること
+- サーバーから次の宛先へ HTTPS で接続できること（直接、またはプロキシ経由）
   - `bedrock-runtime.us-east-1.amazonaws.com`（と、US 推論プロファイルが使う US の各リージョン）
   - 案件の Azure OpenAI リソースのエンドポイント
   - コンテナイメージの取得元: `ghcr.io`、Docker Hub
@@ -74,6 +74,31 @@ nginx は、一般の PC には推論 API とヘルスチェックだけを公�
 ```
 
 US 推論プロファイル（`us.anthropic.*`）は US 内の複数リージョンにリクエストを振り分けるため、`foundation-model` のリージョンは `*` にしています。
+
+#### プロキシ環境の場合
+
+プロキシがない環境では、この節の設定は不要です。プロキシは次の 3 か所で、それぞれ別に設定します。
+
+| 通信 | 設定する場所 |
+| --- | --- |
+| LiteLLM コンテナから Bedrock・Azure へ | `.env` の `LITELLM_HTTP_PROXY`・`LITELLM_HTTPS_PROXY`・`LITELLM_NO_PROXY`（空ならプロキシを使わない） |
+| イメージの取得（`docker compose pull` / `up`） | Docker デーモンの設定（下記）。`.env` の値は使われない |
+| リポジトリの取得（`git clone` / `pull`） | `git config --global http.proxy http://<プロキシ>:<ポート>` |
+
+Docker デーモンのプロキシは `/etc/docker/daemon.json` に設定し、`sudo systemctl restart docker` で反映します（Docker Engine 23.0 以降）。
+
+```json
+{
+  "proxies": {
+    "http-proxy": "http://<プロキシ>:<ポート>",
+    "https-proxy": "http://<プロキシ>:<ポート>",
+    "no-proxy": "localhost,127.0.0.1"
+  }
+}
+```
+
+サーバーのシェルに `https_proxy` などの環境変数が設定されている場合は、`no_proxy` にサーバー自身の IP アドレスを加えてください。
+加えないと、`scripts/smoke-test.sh` や管理 API の `curl` がサーバーへの接続をプロキシに送ってしまいます。
 
 ### 2. `.env` の作成
 
@@ -388,6 +413,9 @@ docker compose logs --tail=100 litellm nginx
 | --- | --- |
 | `docker compose up` で `bind source path does not exist: .../certs/server.crt` | 証明書を作成してから起動する（[証明書の作成](#3-証明書の作成)） |
 | イメージの取得で `toomanyrequests` | Docker Hub の未認証プルの回数制限。`docker login` してから再実行する |
+| イメージの取得がタイムアウトする | プロキシ環境では Docker デーモンのプロキシ設定（[プロキシ環境の場合](#プロキシ環境の場合)） |
+| 推論がタイムアウトする、接続できない | プロキシ環境では `.env` の `LITELLM_HTTPS_PROXY`。変更後は `docker compose up -d --wait litellm` で反映する |
+| `smoke-test.sh` がサーバーに接続できない | シェルの `https_proxy` が設定されている場合は、`no_proxy` にサーバーの IP アドレスを加える |
 | 推論で 500（`Unable to locate credentials`） | `.env` の AWS のアクセスキー |
 | 推論で `permission_error` | IAM の権限と、Bedrock でモデルの利用を有効にしているか |
 | 更新後に 502 | LiteLLM の起動待ち（`docker compose ps` で `healthy` か）。`docker compose restart nginx` |

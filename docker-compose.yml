@@ -68,6 +68,11 @@ services:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       AWS_REGION_NAME: ${AWS_REGION_NAME:-us-east-1}
+      # Bedrock・Azure などへの外向きの通信に使うプロキシ（任意）。空ならプロキシを使わない。
+      # NO_PROXY の localhost と 127.0.0.1 は、下の healthcheck をプロキシに流さないために常に入れる
+      HTTP_PROXY: ${LITELLM_HTTP_PROXY:-}
+      HTTPS_PROXY: ${LITELLM_HTTPS_PROXY:-}
+      NO_PROXY: localhost,127.0.0.1,db${LITELLM_NO_PROXY:+,${LITELLM_NO_PROXY}}
     healthcheck:
       test:
         - CMD-SHELL
