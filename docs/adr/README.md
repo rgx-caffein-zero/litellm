@@ -23,4 +23,4 @@
 | [0001](0001-store-azure-credentials-in-db.md) | Azure OpenAI の認証情報を管理 UI で登録し DB に暗号化して保存する | 承認済み |
 | [0002](0002-self-signed-root-ca-with-constraints.md) | 用途と範囲を制限した自前のルート CA で HTTPS 化する | 承認済み |
 | [0003](0003-use-bedrock-invoke-route-for-claude.md) | Bedrock の Claude には Invoke 経路を使う | 承認済み |
-| [0004](0004-block-unused-litellm-features-in-nginx.md) | 無効化の設定がない LiteLLM の機能は nginx で遮断する | 提案中 |
+| [0004](0004-block-unused-litellm-features-in-nginx.md) | 無効化の設定がない LiteLLM の機能は nginx で遮断する | 承認済み |

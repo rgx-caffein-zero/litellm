@@ -1,6 +1,6 @@
 # 0004. 無効化の設定がない LiteLLM の機能は nginx で遮断する
 
-- ステータス: 提案中
+- ステータス: 承認済み
 - 日付: 2026-10-31
 - 決定者: LiteLLM 導入担当
 - 関連: [requirements.md](../requirements.md)（R6・R7・C7）、`nginx/default.conf`、`docker-compose.yml`
