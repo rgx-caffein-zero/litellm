@@ -24,6 +24,19 @@ nginx ──► LiteLLM ──► AWS Bedrock（us-east-1）
 外部に公開するのは nginx の 443 番ポートだけです。LiteLLM と PostgreSQL はホストのポートに公開しません。
 nginx は、一般の PC には推論 API とヘルスチェックだけを公開し、管理 UI・管理 API は管理者の端末（`.env` の `ADMIN_ALLOW_CIDRS`）からだけ受け付けます。
 
+### 無効にしている機能
+
+LiteLLM のうち、この構成で使わない機能は無効にしています。
+
+| 機能 | 無効にする方法 | 結果 |
+| --- | --- | --- |
+| 料金表などの外部からの取得 | `docker-compose.yml` の `LITELLM_LOCAL_*` | GitHub・docs.litellm.ai に接続せず、イメージに同梱されたものを使う。外への通信は Bedrock と Azure だけになる |
+| API ドキュメント | `docker-compose.yml` の `NO_DOCS`・`NO_REDOC`・`NO_OPENAPI` | `/docs`・`/redoc`・`/openapi.json` が 404 になる。管理 UI の API Reference の画面も使えなくなる |
+| Moyai・Lens・Auto Router | `nginx/default.conf` で遮断（LiteLLM 側に無効化の設定がないため） | API が管理者の端末からも 404 になる。Moyai と Lens は管理 UI の画面も 404 になる。管理 UI のメニューには残る |
+| Enterprise 機能 | ライセンス（`LITELLM_LICENSE`）を設定しない | 管理 UI に「Premium feature」と表示される機能は使えない。ライセンス確認の通信も発生しない |
+
+同梱の料金表は、LiteLLM を更新したときに新しくなります。新しいモデルの料金が反映されない場合は、LiteLLM を更新してください（[LiteLLM を更新する](#litellm-を更新する)）。
+
 | ファイル | 役割 |
 | --- | --- |
 | `docker-compose.yml` | 3 つのコンテナの定義 |
