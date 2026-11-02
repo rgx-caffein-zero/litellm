@@ -46,6 +46,7 @@ LiteLLM のうち、この構成で使わない機能は無効にしています
 | `nginx/entrypoint/40-admin-allow.sh` | 起動時に `ADMIN_ALLOW_CIDRS` から管理系の許可リストを生成する |
 | `scripts/certs/` | ルート CA とサーバー証明書の作成スクリプト |
 | `scripts/smoke-test.sh` | 接続・モデル一覧・推論の確認スクリプト |
+| `scripts/migration/` | 現行環境からの移行（DB のダンプとリストア）のスクリプト |
 | `certs/` | ルート CA とサーバー証明書（スクリプトで作成。Git 管理外） |
 
 ## 構築
@@ -321,6 +322,87 @@ docker compose stop litellm
 docker compose exec -T db pg_restore -U litellm -d litellm --clean --if-exists < backups/litellm-YYYY-MM-DD.dump
 docker compose start litellm
 ```
+
+### 現行環境から移行する
+
+現行（移行元）の LiteLLM の DB を、この構成（移行先）にコピーします。チーム・キー・予算・利用額・管理 UI で登録したモデルと認証情報が引き継がれます。
+移行元には書き込まず、停止も再起動もしません。DB のマイグレーションは、移行先の LiteLLM が起動時に移行先の DB だけに行います。
+移行元 LiteLLM v1.83.14-stable.patch.3 / PostgreSQL 15 から、この構成（LiteLLM 1.106.6 / PostgreSQL 17.8）への移行で確認しています。
+
+> [!WARNING]
+> 移行先の LiteLLM の接続先（`DATABASE_URL`）を、移行元の DB にしないでください。起動時のマイグレーションで、移行元の DB が書き換わります。
+
+**1. ダンプする（移行元のサーバー）**
+
+`scripts/migration/dump-db.sh` だけを移行元のサーバーにコピーし、利用の少ない時間帯に実行します。
+
+```sh
+docker ps    # DB と LiteLLM のコンテナ名を確認する
+./dump-db.sh --db-container <DB のコンテナ> --litellm-container <LiteLLM のコンテナ>
+```
+
+- `pg_dump` は読み取り専用で動き、LiteLLM の通常の読み書きを止めません。開始時にロックをすぐに取れなければ、待たずに失敗します。
+- 出力先の空き容量が DB のサイズの 2 倍より少なければ中止します。足りない場合は `--output` で別のディスクを指定します。
+- 利用ログ（管理 UI の Logs の履歴）が不要なら `--exclude-spend-logs` を付けます。チームとキーの利用額は別のテーブルにあるので、予算は引き継がれます。
+- 最後に表示される**テーブルの件数と SHA-256** を、移行元の画面から直接控えます。
+
+> [!WARNING]
+> ダンプ中は、移行元の LiteLLM を再起動しないでください。pg_dump は終わるまで全テーブルのロックを持ち続けるため、起動時のマイグレーションがロックを待ち、その後ろにリクエストが並んで**移行元が応答しなくなります**。
+> 応答しなくなったら、すぐに Ctrl-C で中断してください（移行元の DB で動いている pg_dump も終了させます）。中断時に警告が出た場合は、次の結果が 0 であることを確認します。
+>
+> ```sh
+> docker exec <DB のコンテナ> psql -U <DB のユーザー> -d <DB 名> -Atc \
+>   "SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'litellm-migration-dump-%'"
+> ```
+
+**2. ソルトキーを合わせる（移行先）**
+
+手順 1 の「LITELLM_SALT_KEY の設定」の表示に従って、移行先の `.env` の `LITELLM_SALT_KEY` を設定します。違う値にすると、管理 UI で登録した認証情報を復号できません。
+
+| 移行元の LITELLM_SALT_KEY | 移行先の LITELLM_SALT_KEY に設定する値 |
+| --- | --- |
+| 設定あり | 移行元の `LITELLM_SALT_KEY` と同じ値 |
+| 設定なし | 移行元の `LITELLM_MASTER_KEY` の値（ソルトキーがない場合、LiteLLM はマスターキーで暗号化するため） |
+
+確認するのはコンテナの環境変数だけです。移行元の `config.yaml` の `environment_variables` でソルトキーを設定している場合は、その値を使ってください。
+`LITELLM_MASTER_KEY` は移行元と違っても構いません（キーはハッシュで保存されているため、移行元で発行したキーはそのまま使えます）。
+
+**3. リストアする（移行先のサーバー）**
+
+ダンプを scp などの暗号化された経路で移行先にコピーし、リポジトリのディレクトリで実行します。**移行先の DB の内容はすべて削除されます。**
+
+```sh
+chmod 600 <ダンプファイル>
+scripts/migration/restore-db.sh <ダンプファイル> --sha256 <手順 1 で控えた SHA-256>
+```
+
+- SHA-256 が一致しなければ、何もせずに終了します。リストアは DB の管理者の権限で行うので、差し替えられたダンプを入れると DB のコンテナで任意の処理が動きます。SHA-256 はダンプと同じ経路（同じフォルダやメールなど）で受け渡さないでください。
+- 同じプロジェクト名のコンテナが別のディレクトリにある場合や、同じプロジェクト名のボリュームだけが残っている場合は、別の環境を消さないよう中止します。中止された場合は `COMPOSE_PROJECT_NAME=<別の名前>` を付けて実行します。docker の接続先（`DOCKER_HOST`・`docker context`）は切り替えずに実行してください。
+- 終了後、LiteLLM と nginx は停止したままです。表示を見て、次を確認します。
+  - テーブルの件数が、手順 1 の表示と同じである。
+  - DB に保存された設定に通知（Slack・メールなど）やコールバックがあれば、移行先からも送られる。不要なら、起動後に管理 UI で無効にする。
+  - モデル名の重複があれば、起動後に管理 UI で DB 側のモデルを削除する（同じ名前のモデルの間で負荷分散されるため）。
+
+**4. 起動して確認する（移行先）**
+
+`.env` を変更したので、新しいシェルで実行します。
+
+```sh
+docker compose up -d --wait
+docker compose logs litellm | grep -i -E 'migrat|error'
+set -a; . ./.env; set +a
+LITELLM_API_KEY="$LITELLM_MASTER_KEY" scripts/smoke-test.sh https://<サーバーの IP アドレス>
+```
+
+管理 UI で、チーム・キー・モデルが移行元と同じであること、Azure のモデルを開いてエラーにならないことを確認します。
+
+**注意点**
+
+- 移行先には移行元と同じキーが入り、移行元のキーで移行先も使えます。切り替えるまでは、移行先を利用者に案内しないでください。
+- 移行先から推論すると、移行元と同じ AWS・Azure の認証情報を使います（クォータと請求は共有です）。
+- コピーは実行した時点のものです。本番を切り替えるときは、移行元の利用を止めてから、手順 1 からやり直します。
+- 移行元の `config.yaml` に書いたモデルは DB にないため移行されません。必要なら管理 UI で登録します。
+- ダンプにはキーのハッシュや暗号化された認証情報が含まれます。移行が終わったら、移行元と移行先の両方で削除してください。
 
 ### LiteLLM を更新する
 
