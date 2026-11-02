@@ -26,6 +26,7 @@
 | [docs/requirements.md](docs/requirements.md) | 全員 | 要件定義 |
 | [docs/setup.md](docs/setup.md) | サーバー管理者 | 構築手順 |
 | [docs/operations.md](docs/operations.md) | LiteLLM 管理者 | 案件の追加、キーの発行、Azure モデルの追加、バックアップ、更新 |
+| [docs/migration.md](docs/migration.md) | サーバー管理者 | 現行環境からの移行（DB のダンプとリストア） |
 | [docs/client-setup.md](docs/client-setup.md) | 利用者 | 社内 PC の設定（ルート CA、Claude Desktop） |
 | [docs/adr/](docs/adr/) | 開発者 | 設計判断の記録 |
 

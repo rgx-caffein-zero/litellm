@@ -27,6 +27,7 @@ docker-compose.yml  # nginx / LiteLLM / PostgreSQL の定義
 litellm/            # LiteLLM の config.yaml
 nginx/              # nginx の設定（default.conf）と起動時スクリプト（entrypoint/）
 scripts/certs/      # ルート CA とサーバー証明書の作成スクリプト
+scripts/migration/  # 現行環境からの移行（DB のダンプとリストア）のスクリプト
 scripts/            # 疎通確認（smoke-test.sh）、lint
 tests/              # スクリプトのテスト
 docs/               # 要件・構築・運用・PC 設定の手順書、ADR
