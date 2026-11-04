@@ -396,6 +396,17 @@ LITELLM_API_KEY="$LITELLM_MASTER_KEY" scripts/smoke-test.sh https://<サーバ�
 
 管理 UI で、チーム・キー・モデルが移行元と同じであること、Azure のモデルを開いてエラーにならないことを確認します。
 
+LiteLLM が起動しない（`container litellm-litellm-1 is unhealthy`）場合は、新しいシェルで次を実行します。
+パスワードなどの値は表示せず、DB に認証できるかと、マイグレーションの状態だけを表示します。
+
+```sh
+docker compose stop litellm    # 失敗と再起動の繰り返しを止める
+scripts/migration/check-db.sh
+```
+
+ログに Prisma の `P1000` が出る場合は、DB のパスワードの不一致です。DB のパスワードは初回の起動時にしか設定されないため、その後 `.env` の `POSTGRES_PASSWORD` を変える（現行環境の値にするなど）と一致しなくなります。
+`scripts/migration/check-db.sh --fix-password` で、DB のパスワードを `.env` に合わせられます（DB のデータは変わりません）。
+
 **注意点**
 
 - 移行先には移行元と同じキーが入り、移行元のキーで移行先も使えます。切り替えるまでは、移行先を利用者に案内しないでください。
